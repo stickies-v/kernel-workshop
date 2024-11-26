@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kernel-workshop"
+version = "0.1.0"
+description = "Python implementation for the kernel workshop"
+authors = [
+    { name = "stickies-v", email = "stickies-v@protonmail.com" }
+]
+dependencies = [
+    "python-bitcoinlib>=0.12.2",
+    "py-bitcoinkernel @ git+https://github.com/stickies-v/py-bitcoinkernel@abc-2024",
+]
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+frontend = [
+    "fastapi",
+    "uvicorn",
+]
+
+
+[project.scripts]
+raw = "raw.main:main"
+wrapped = "wrapped.main:main"
+
+[tool.setuptools]
+packages = ["raw", "wrapped", "common"]
+package-dir = {"" = "src"}
