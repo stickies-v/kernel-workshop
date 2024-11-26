@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TapScript OP_CODE Leaderboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        #controls {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        #blockInput {
+            padding: 8px;
+            border: 2px solid #3498db;
+            border-radius: 4px;
+            width: 150px;
+            text-align: center;
+        }
+
+        .visualization-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        #opCodeChart {
+            width: 100% !important;
+            height: 600px !important;
+            margin-bottom: 30px;
+        }
+
+        #opCodeTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        #opCodeTable th, #opCodeTable td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e1e1e1;
+        }
+
+        #opCodeTable th {
+            background-color: #3498db;
+            color: white;
+        }
+
+        #opCodeTable tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        #opCodeTable tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TapScript OP_CODE Leaderboard</h1>
+    <div id="controls">
+        <div id="blockInfo" style="font-size: 14px; color: #2c3e50; text-align: center;"></div>
+        <div class="button-row">
+            <button onclick="prevBlock()">Previous Block</button>
+            <input type="number" id="blockInput" value="N/A" placeholder="Enter block height">
+            <button onclick="goToBlock()">Go to Block</button>
+            <button onclick="nextBlock()">Next Block</button>
+        </div>
+    </div>
+    <div class="visualization-container">
+        <canvas id="opCodeChart"></canvas>
+    </div>
+    <div class="visualization-container">
+        <table id="opCodeTable">
+            <thead>
+                <tr>
+                    <th>OP_CODE</th>
+                    <th>Frequency</th>
+                    <th>Percentage</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <script>
+        let currentBlock = 0;
+        let minBlock = 0;
+        let maxBlock = 0;
+        let currentChart = null;
+        let blockData = {}; // Store all block data here
+
+        // Load all block data at once
+        async function initializeBlocks() {
+            try {
+                // Fetch the data file from the same directory
+                const response = await fetch('../../data/op_code/block_frequencies.json');
+                blockData = await response.json();
+
+                const blockNumbers = Object.keys(blockData).map(Number);
+                const blockInput = document.getElementById('blockInput');
+                const blockInfo = document.getElementById('blockInfo');
+
+                if (blockNumbers.length > 0) {
+                    minBlock = Math.min(...blockNumbers);
+                    maxBlock = Math.max(...blockNumbers);
+                    currentBlock = minBlock;
+
+                    blockInput.value = minBlock;
+                    blockInput.placeholder = `Enter block height (${minBlock}-${maxBlock})`;
+
+                    blockInfo.textContent = `Blocks found: ${blockNumbers.length}, Min: ${minBlock}, Max: ${maxBlock}`;
+
+                    loadBlockData(currentBlock);
+                } else {
+                    blockInput.value = '0';
+                    blockInput.disabled = true;
+                    document.querySelector('button[onclick="goToBlock"]').disabled = true;
+                    blockInfo.textContent = 'No blocks found';
+                }
+            } catch (error) {
+                console.error('Error initializing blocks:', error);
+                document.getElementById('blockInput').value = '0';
+            }
+        }
+
+        function loadBlockData(blockHeight) {
+            const data = blockData[blockHeight];
+            if (data) {
+                updateChart(data);
+                updateTable(data);
+                document.getElementById('blockInput').value = blockHeight;
+            } else {
+                console.error('Block data not found for block:', blockHeight);
+            }
+        }
+
+        function goToBlock() {
+            const input = document.getElementById('blockInput');
+            const blockHeight = parseInt(input.value);
+            
+            if (isNaN(blockHeight)) {
+                alert('Please enter a valid block number');
+                return;
+            }
+            
+            if (blockHeight < minBlock || blockHeight > maxBlock) {
+                alert(`Please enter a block number between ${minBlock} and ${maxBlock}`);
+                return;
+            }
+            
+            currentBlock = blockHeight;
+            loadBlockData(currentBlock);
+        }
+
+        function updateChart(frequencies) {
+            const ctx = document.getElementById('opCodeChart').getContext('2d');
+            
+            // Properly destroy the previous chart instance
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;  // Important: set to null after destroying
+            }
+
+            // Clear the canvas completely
+            const canvas = document.getElementById('opCodeChart');
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+            // Create new chart after a small delay to ensure proper cleanup
+            setTimeout(() => {
+                // Prepare data for treemap
+                const data = Object.entries(frequencies).map(([label, value]) => ({
+                    label,
+                    value
+                }));
+
+                currentChart = new Chart(ctx, {
+                    type: 'treemap',
+                    data: {
+                        datasets: [{
+                            tree: data,
+                            key: 'value',
+                            labels: {
+                                display: true,
+                                formatter: (context) => {
+                                    // Log the context.raw to inspect its structure
+                                    console.log('Treemap Label Context:', context.raw);
+
+                                    if (context.raw && context.raw._data && typeof context.raw._data.label !== 'undefined' && typeof context.raw._data.value !== 'undefined') {
+                                        return [
+                                            context.raw._data.label,
+                                            Math.round(context.raw._data.value)
+                                        ];
+                                    }
+                                    return ['No Data', '0'];
+                                }
+                            },
+                            backgroundColor: (ctx) => {
+                                if (!ctx.raw || typeof ctx.raw.value === 'undefined') {
+                                    return 'hsl(0, 0%, 90%)'; // Default color if ctx.raw or ctx.raw.value is undefined
+                                }
+                                const value = ctx.raw.value;
+                                const max = Math.max(...Object.values(frequencies));
+                                const hue = 200; // Blue hue
+                                const saturation = 80;
+                                const lightness = 100 - (value / max * 50); // Darker color for higher values
+                                return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                            },
+                            spacing: 2,
+                            borderWidth: 1,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `OP_CODE Distribution for Block ${currentBlock}`,
+                                font: {
+                                    size: 16
+                                }
+                            },
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }, 50); // Small delay to ensure proper cleanup
+        }
+
+        function updateTable(frequencies) {
+            const total = Object.values(frequencies).reduce((a, b) => a + b, 0);
+            const sortedEntries = Object.entries(frequencies)
+                .sort((a, b) => b[1] - a[1]);
+
+            const tbody = document.getElementById('opCodeTable').querySelector('tbody');
+            tbody.innerHTML = '';
+
+            sortedEntries.forEach(([opCode, freq]) => {
+                const percentage = ((freq / total) * 100).toFixed(2);
+                const row = `
+                    <tr>
+                        <td>${opCode}</td>
+                        <td>${freq}</td>
+                        <td>${percentage}%</td>
+                    </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function prevBlock() {
+            if (currentBlock > minBlock) {
+                currentBlock--;
+                loadBlockData(currentBlock);
+            }
+        }
+
+        function nextBlock() {
+            if (currentBlock < maxBlock) {
+                currentBlock++;
+                loadBlockData(currentBlock);
+            }
+        }
+
+        // Initialize the blocks and load the first available block
+        initializeBlocks();
+    </script>
+</body>
+</html>
