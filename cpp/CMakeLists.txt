@@ -10,11 +10,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Add the executable
 add_executable(kernel-cpp-workshop src/main.cpp)
 
-# Find the libbitcoinkernel library
+# Find the bitcoinkernel library
 find_library(BITCOINKERNEL_LIBRARY NAMES bitcoinkernel)
 
 # Include the directory containing both bitcoinkernel_wrapper.h and bitcoinkernel.h
 target_include_directories(kernel-cpp-workshop PRIVATE include)
 
-# Link the libbitcoinkernel library
+# Link the bitcoinkernel library
 target_link_libraries(kernel-cpp-workshop PRIVATE ${BITCOINKERNEL_LIBRARY})

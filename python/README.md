@@ -1,13 +1,13 @@
 # Python Workshop
 
-`libbitcoinkernel` exposes a C API. It mostly operates on pointers (which
+`bitcoinkernel` exposes a C API. It mostly operates on pointers (which
 usually, but not always) are managed by the user. This combined with the
 fact that C does not have classes makes the API quite different from how
 one would organize a Python API.
 
 Wrapper libraries (such as [`py-bitcoinkernel`](https://github.com/stickies-v/py-bitcoinkernel))
 hide this "awkwardness" and expose a much more concise, Pythonic
-interface. To give maximum insight into the `libbitcoinkernel` API, we
+interface. To give maximum insight into the `bitcoinkernel` API, we
 will use the raw API in this workshop, while also offering a
 [`wrapped/`](./src/wrapped/) version using the `py-bitcoinkernel` library
 to highlight the difference. The `wrapped` version can be used as a 
@@ -24,7 +24,7 @@ library, which you shouldn't have to modify in this workshop.
   requires exclusive access to the datadir, it is recommended you copy
   the `blocks/` and `chainstate/` directories to a separate directory
   for this workshop.
-- `py-bitcoinkernel` and `libbitcoinkernel` are dependencies of this
+- `py-bitcoinkernel` and `bitcoinkernel` are dependencies of this
   project, and are installed automatically when you install the python
   package. Please refer to the `py-bitcoinkernel` [installation
   instructions](https://github.com/stickies-v/py-bitcoinkernel?tab=readme-ov-file#installation)
