@@ -24,16 +24,18 @@ def make_context(args: 'argparse.Namespace') -> k.kernel_Context:
     """
     # WSTASK 1: implement make_context, don't forget to clean up kernel
     # objects created here (context_opts and chain_params)
-    context_opts = ...
-    chain_params = ...
-    context = ...
+    context_opts = k.kernel_context_options_create()
+    chain_params = k.kernel_chain_parameters_create(args.chain_type)
+    k.kernel_context_options_set_chainparams(context_opts, chain_params)
+    context = k.kernel_context_create(context_opts)
 
     """
     Once the context is created, the context options and chain
     parameters are no longer necessary, so we can clean them up here.
     The context itself needs to be destroyed by the user manually.
     """
-    ...
+    k.kernel_context_options_destroy(context_opts)
+    k.kernel_chain_parameters_destroy(chain_params)
 
     return context
 
@@ -52,15 +54,15 @@ def make_chainman(context: k.kernel_Context, datadir: Path) -> k.kernel_Chainsta
 
     # WSTASK 2: implement make_chainman, don't forget to clean up kernel
     # objects created here (chainman_opts).
-    chainman_opts = ...
-    chainstate_manager = ...
+    chainman_opts = k.kernel_chainstate_manager_options_create(context, datadir_str, len(datadir_str), blocksdir_str, len(blocksdir_str))
+    chainstate_manager = k.kernel_chainstate_manager_create(context, chainman_opts)
 
     """
     We have our chainstate_manager, so we can clean up the now
     unnecessary options objects.
     The chainstate_manager needs to be destroyed by the user manually.
     """
-    ...
+    k.kernel_chainstate_manager_options_destroy(chainman_opts)
 
     return chainstate_manager
 
@@ -78,7 +80,7 @@ def get_block_data_prevouts(
     As always, destroy any kernel objects we don't need anymore.
     """
     # WSTASK 4: implement get_block_data_prevouts
-    undo = ...
+    undo = k.kernel_read_block_undo_from_disk(context, chainstate_manager, block_index)
     # add empty list for coinbase transaction
     prevouts = [[]] + [get_outputs_from_undo_transaction(undo, tx_idx) for tx_idx in range(k.kernel_block_undo_size(undo))]
     k.kernel_block_undo_destroy(undo)
@@ -89,10 +91,12 @@ def get_block_data_prevouts(
 
     As always, destroy any kernel objects we don't need anymore.
     """
-    block = ... # read block from disk
-    block_byte_arr = ... # copy the opaque block pointer into a bytearray we can access
+    block = k.kernel_read_block_from_disk(context, chainstate_manager, block_index)
+    block_byte_arr = k.kernel_copy_block_data(block)
     block_bytes = kernel_byte_array_to_bytes(block_byte_arr)
     # don't forget to clean up
+    k.kernel_block_destroy(block)
+    k.kernel_byte_array_destroy(block_byte_arr)
 
     return block_bytes, prevouts
 
@@ -114,11 +118,12 @@ def block_index_iterator(
         start_height = normalize_block_height(context, chainman, start_height)
         end_height = normalize_block_height(context, chainman, end_height)
         assert start_height <= end_height, f"start_height ({start_height}) must be less than or equal to end_height ({end_height})"
-        block_index = ... # get block_index for start_height
-        while block_index and ... <= end_height:  # use kernel to get the height of the block_index
+        block_index = k.kernel_get_block_index_from_height(context, chainman, start_height)
+        while block_index and k.kernel_block_index_get_height(block_index) <= end_height:
             yield block_index
             previous_block_index = block_index
-            block_index = ...  # get next block_index (and don't forget to clean up the previous_block_index)
+            block_index = k.kernel_get_next_block_index(context, chainman, block_index)
+            k.kernel_block_index_destroy(previous_block_index)
 
     finally:
         if block_index is not None:
@@ -143,10 +148,12 @@ def transaction_output_to_bytes(output: k.kernel_TransactionOutput) -> bytes:
     # 4. clean up
     # Note: if you chain steps 1 and 2 into a single expression, you
     # won't be able to clean up the scriptpubkey.
-    spk = ...
-    byte_arr = ...
+    spk = k.kernel_copy_script_pubkey_from_output(output)
+    byte_arr = k.kernel_copy_script_pubkey_data(spk)
     bytes = kernel_byte_array_to_bytes(byte_arr)
 
+    k.kernel_byte_array_destroy(byte_arr)
+    k.kernel_script_pubkey_destroy(spk)
     return bytes
 
 def main():
