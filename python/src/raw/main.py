@@ -24,7 +24,6 @@ def make_context(args: 'argparse.Namespace') -> k.kernel_Context:
     """
     # WSTASK 1: implement make_context, don't forget to clean up kernel
     # objects created here (context_opts and chain_params)
-    datadir = args.datadir
     context_opts = ...
     chain_params = ...
     context = ...
@@ -40,25 +39,21 @@ def make_context(args: 'argparse.Namespace') -> k.kernel_Context:
 
 def make_chainman(context: k.kernel_Context, datadir: Path) -> k.kernel_ChainstateManager:
     """
-    To create a ChainstateManager, we first need to instantiate
-    ChainstateManagerOptions and BlockManagerOptions objects. Once the
-    ChainstateManager is constructed, we can load it after we
-    instantiate a ChainstateLoadOptions object.
+    To create a ChainstateManager, we first need to instantiate the
+    ChainstateManagerOptions.
 
     Make sure all kernel objects that are created in this function are
     cleaned up to avoid leaking memory. We can't do that for the
     chainstate_manager object, so the user has to ensure that's done
     manually later. 
     """
-    blocksdir = datadir / "blocks/"
+    datadir_str = str(datadir).encode('utf-8')
+    blocksdir_str = str(datadir / "blocks/").encode('utf-8')
 
     # WSTASK 2: implement make_chainman, don't forget to clean up kernel
-    # objects created here (chainman_opts, blockman_opts, chainstate_load_opts)
+    # objects created here (chainman_opts).
     chainman_opts = ...
-    blockman_opts = ...
     chainstate_manager = ...
-    chainstate_load_opts = ...
-    assert k.kernel_chainstate_manager_load_chainstate(context, chainstate_load_opts, chainstate_manager)
 
     """
     We have our chainstate_manager, so we can clean up the now
