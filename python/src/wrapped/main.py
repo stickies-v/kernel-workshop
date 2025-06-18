@@ -1,4 +1,5 @@
 import json
+import logging
 
 import pbk
 from common.args import parse_args
@@ -8,6 +9,9 @@ from common.process import analyze_block
 def main():
     args = parse_args()
     frequencies = {}
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s")
+    log = pbk.KernelLogViewer()
 
     chain_man = pbk.load_chainman(args.datadir, args.chain_type)
     # Iterate over all blocks from start to end height, and fetch the block and undo data so it can
