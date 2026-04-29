@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Block Scanner</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: monospace; background: #111; color: #eee; padding: 1em; }
+  video { width: 100%; max-width: 500px; border: 2px solid #444; border-radius: 4px; }
+  #status { margin: 1em 0; padding: 0.5em; border-radius: 4px; }
+  #log { font-size: 0.85em; max-height: 40vh; overflow-y: auto; }
+  .ok { color: #4c4; }
+  .err { color: #c44; }
+  .info { color: #48f; }
+</style>
+</head>
+<body>
+
+<h2>Block Scanner</h2>
+<p id="status" class="info">Connecting...</p>
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" hidden></canvas>
+<div id="log"></div>
+
+<!-- jsQR: lightweight QR decoder, no dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+const wsUrl = `wss://${location.host}/`;
+const COOLDOWN_MS = 2000;
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d", { willReadFrequently: true });
+const statusEl = document.getElementById("status");
+const logEl = document.getElementById("log");
+
+let ws;
+let cooldownUntil = 0;
+
+function log(msg, cls) {
+  const div = document.createElement("div");
+  div.className = cls || "";
+  div.textContent = msg;
+  logEl.prepend(div);
+}
+
+function connect() {
+  ws = new WebSocket(wsUrl);
+  ws.onopen = () => {
+    statusEl.textContent = "Connected. Scan QR codes!";
+    statusEl.className = "ok";
+  };
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.accepted) {
+      log(`Block accepted (new=${data.is_new}, height=${data.height})`, "ok");
+    } else {
+      log(`Rejected: ${data.error}`, "err");
+    }
+  };
+  ws.onclose = () => {
+    statusEl.textContent = "Disconnected. Reconnecting...";
+    statusEl.className = "err";
+    setTimeout(connect, 2000);
+  };
+}
+
+async function startCamera() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" }
+  });
+  video.srcObject = stream;
+  video.play();
+  requestAnimationFrame(scan);
+}
+
+function scan() {
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, canvas.width, canvas.height);
+    const now = performance.now();
+    if (code && now >= cooldownUntil) {
+      cooldownUntil = now + COOLDOWN_MS;
+      log(`Scanned ${code.data.length} chars, sending...`, "info");
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(code.data);
+      }
+    }
+  }
+  requestAnimationFrame(scan);
+}
+
+connect();
+startCamera();
+</script>
+</body>
+</html>

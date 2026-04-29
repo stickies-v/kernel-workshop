@@ -1,0 +1,29 @@
+# Docker Compose config for the full mode (phone + WebSocket server).
+#
+# Minimal mode is interactive (stdin); use `docker run -it` for that instead —
+# compose isn't well suited for interactive sessions.
+#
+# Recommended: drive this via `python run_docker.py full`, which detects the
+# LAN IP for you. Direct usage (e.g. on Windows PowerShell):
+#
+#   $env:PBK_ADVERTISE_HOST = "192.168.1.42"
+#   docker compose up
+#
+# Find your LAN IP with `ipconfig` (Windows), `ipconfig getifaddr en0`
+# (macOS WiFi), or `hostname -I` (Linux).
+
+services:
+  node:
+    build:
+      context: .
+      target: full
+    ports:
+      - "8765:8765"
+    # Read-only bind mount of the workshop dir so participants can edit
+    # node.py / index.html on the host and restart the container to pick
+    # up changes without a full image rebuild. Read-only blocks the only
+    # realistic escape vector (tampering with .git/hooks).
+    volumes:
+      - .:/workshop:ro
+    environment:
+      PBK_ADVERTISE_HOST: ${PBK_ADVERTISE_HOST:?set PBK_ADVERTISE_HOST to your laptop's LAN IP}

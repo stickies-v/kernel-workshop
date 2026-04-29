@@ -1,2 +1,5 @@
-data/**/*.json
-cpp/build/
+.venv/
+.certs/
+__pycache__/
+*.pyc
+.DS_Store
