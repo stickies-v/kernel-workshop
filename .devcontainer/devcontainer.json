@@ -1,0 +1,23 @@
+{
+  "name": "pbk-workshop",
+  "build": {
+    "context": "..",
+    "dockerfile": "../Dockerfile",
+    "target": "full"
+  },
+  "forwardPorts": [8765],
+  "portsAttributes": {
+    "8765": {
+      "label": "pbk-node",
+      "protocol": "https"
+    }
+  },
+  "workspaceFolder": "/workshop",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workshop,type=bind,consistency=cached"
+  ],
+  "remoteEnv": {
+    "PBK_ADVERTISE_HOST": "${localEnv:PBK_ADVERTISE_HOST}"
+  },
+  "postAttachCommand": "echo 'Ready. Run: uv run python run_server.py  (or run_stdin.py for minimal mode).'  && echo 'For phone connectivity set PBK_ADVERTISE_HOST on the host before opening the devcontainer.'"
+}

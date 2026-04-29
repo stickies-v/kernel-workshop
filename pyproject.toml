@@ -1,0 +1,18 @@
+[project]
+name = "pbk-workshop"
+version = "0.1.0"
+description = "py-bitcoinkernel workshop — Bitcoin 2026 Las Vegas"
+requires-python = ">=3.10"
+# Minimal setup: just the kernel and the standard library. Run `run_stdin.py`.
+dependencies = [
+    "py-bitcoinkernel",
+]
+
+[project.optional-dependencies]
+# Full setup: adds the WebSocket server + terminal QR so your phone can deliver
+# blocks to the node by scanning QR codes. Install with `uv sync --extra full`
+# or `uv pip install -e '.[full]'`, then run `run_server.py`.
+full = [
+    "websockets",
+    "qrcode",
+]
